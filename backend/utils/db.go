@@ -3,8 +3,8 @@ package utils
 import (
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/mfuadfakhruzzaki/myapp-backend/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -12,20 +12,17 @@ import (
 var DB *gorm.DB
 
 func InitDB() {
-    // Ganti string koneksi sesuai kebutuhan Anda
-    dsn := "host=192.168.1.12 user=postgres password=020803 dbname=myappdb port=5432 sslmode=disable"
+    host := os.Getenv("DB_HOST")
+    port := os.Getenv("DB_PORT")
+    user := os.Getenv("DB_USER")
+    password := os.Getenv("DB_PASSWORD")
+    dbname := os.Getenv("DB_NAME")
+
+    connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
     var err error
-    DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+    DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
     if err != nil {
         log.Fatal("Error membuka database dengan GORM: ", err)
     }
-
-    fmt.Println("Berhasil terhubung ke database dengan GORM!")
-
-    // Auto migration: membuat atau mengubah tabel berdasarkan model
-    err = DB.AutoMigrate(&models.User{}, &models.Item{})
-    if err != nil {
-        log.Fatal("Error dalam auto migration: ", err)
-    }
-    fmt.Println("Auto migration selesai, tabel siap digunakan!")
+    fmt.Println("Berhasil terhubung ke database!")
 }
