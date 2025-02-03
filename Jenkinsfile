@@ -4,6 +4,17 @@ pipeline {
     environment {
         PATH = "/usr/local/go/bin:${env.PATH}"
         DEPLOY_DIR = "/var/www/myapp"
+        // Environment variables untuk koneksi database
+        DB_HOST = "127.0.0.1"
+        DB_PORT = "5432"
+        DB_USER = "postgres"
+        DB_PASSWORD = "020803"
+        DB_NAME = "myappdb"
+    }
+
+    triggers {
+        // Poll SCM setiap 5 menit untuk memicu pipeline saat ada perubahan
+        pollSCM('H/5 * * * *')
     }
 
     stages {
@@ -58,6 +69,16 @@ pipeline {
                     sh 'mkdir -p ${DEPLOY_DIR}'
                     sh 'cp -r dist/* ${DEPLOY_DIR}/'
                 }
+            }
+        }
+        stage('Restart Service') {
+            steps {
+                echo 'Reloading daemon and restarting backend service...'
+                // Pastikan Jenkins user memiliki hak akses sudo tanpa password untuk perintah ini
+                sh 'sudo systemctl daemon-reload'
+                sh 'sudo systemctl restart myapp-backend.service'
+                // Debug: Tampilkan status service backend
+                sh 'sudo systemctl status myapp-backend.service'
             }
         }
     }

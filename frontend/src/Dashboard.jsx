@@ -12,10 +12,13 @@ export default function Dashboard({ token }) {
   const [editingName, setEditingName] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
 
+  // URL dasar backend
+  const BASE_URL = "http://192.168.1.12:8081/api/items";
+
   // Fungsi untuk mengambil data item dari backend
   const fetchItems = async () => {
     try {
-      const res = await fetch("http://localhost:8081/api/items", {
+      const res = await fetch(BASE_URL, {
         headers: {
           Authorization: "Bearer " + token,
         },
@@ -42,7 +45,7 @@ export default function Dashboard({ token }) {
   const handleAddItem = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:8081/api/items", {
+      const res = await fetch(BASE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +88,7 @@ export default function Dashboard({ token }) {
   // Fungsi untuk mengirim update item ke backend
   const handleUpdateItem = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8081/api/items/${id}`, {
+      const res = await fetch(`${BASE_URL}/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -114,7 +117,7 @@ export default function Dashboard({ token }) {
   // Fungsi untuk menghapus item dari backend
   const handleDeleteItem = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8081/api/items/${id}`, {
+      const res = await fetch(`${BASE_URL}/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: "Bearer " + token,
