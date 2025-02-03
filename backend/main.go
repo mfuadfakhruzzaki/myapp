@@ -13,23 +13,23 @@ import (
 )
 
 func main() {
-    // Inisialisasi koneksi database (jika menggunakan database, misalnya PostgreSQL)
-    utils.InitDB()
+	// Inisialisasi koneksi database dan auto migration
+	utils.InitDB()
 
-    router := mux.NewRouter()
+	router := mux.NewRouter()
 
-    // Endpoint untuk register dan login (CRUD & autentikasi)
-    router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
-    router.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
+	// Endpoint untuk register dan login tidak memerlukan autentikasi
+	router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
+	router.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
 
-    // Endpoint CRUD untuk resource (misalnya, "items")
-    router.Handle("/items", middleware.JWTAuth(http.HandlerFunc(handlers.GetItemsHandler))).Methods("GET")
-    router.Handle("/items", middleware.JWTAuth(http.HandlerFunc(handlers.CreateItemHandler))).Methods("POST")
-    router.Handle("/items/{id}", middleware.JWTAuth(http.HandlerFunc(handlers.UpdateItemHandler))).Methods("PUT")
-    router.Handle("/items/{id}", middleware.JWTAuth(http.HandlerFunc(handlers.DeleteItemHandler))).Methods("DELETE")
+	// Endpoint CRUD untuk "items", dilindungi oleh middleware JWT
+	protected := router.PathPrefix("/api").Subrouter()
+	protected.Use(middleware.JWTAuth)
+	protected.HandleFunc("/items", handlers.GetItemsHandler).Methods("GET")
+	protected.HandleFunc("/items", handlers.CreateItemHandler).Methods("POST")
+	protected.HandleFunc("/items/{id}", handlers.UpdateItemHandler).Methods("PUT")
+	protected.HandleFunc("/items/{id}", handlers.DeleteItemHandler).Methods("DELETE")
 
-    fmt.Println("Backend berjalan di port 8080...")
-    if err := http.ListenAndServe(":8080", router); err != nil {
-        log.Fatal("Server error:", err)
-    }
+	fmt.Println("Server berjalan di port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
