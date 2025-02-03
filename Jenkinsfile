@@ -74,7 +74,6 @@ pipeline {
         stage('Restart Service') {
             steps {
                 echo 'Reloading daemon and restarting backend service...'
-                // Pastikan Jenkins user memiliki hak akses sudo tanpa password untuk perintah ini
                 sh 'sudo systemctl daemon-reload'
                 sh 'sudo systemctl restart myapp-backend.service'
                 // Debug: Tampilkan status service backend
