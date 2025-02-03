@@ -2,22 +2,26 @@ pipeline {
     agent any
 
     environment {
-        // Pastikan direktori Golang sudah ditambahkan ke PATH
+        // Pastikan direktori Golang ada di PATH
         PATH = "/usr/local/go/bin:${env.PATH}"
+        // Jika diperlukan, Anda bisa menambahkan variabel lain, misalnya target deployment
+        DEPLOY_DIR = "/var/www/myapp"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Mengambil kode dari repository yang telah dikonfigurasi di job Jenkins
+                // Mengambil kode dari repository
                 checkout scm
             }
         }
         stage('Build Backend') {
             steps {
                 dir('backend') {
-                    // Pastikan dependency terpasang dan build binary backend
+                    echo 'Building Backend...'
+                    // Pastikan dependency terinstall
                     sh 'go mod tidy'
+                    // Build binary backend
                     sh 'go build -o myapp-backend'
                 }
             }
@@ -25,7 +29,8 @@ pipeline {
         stage('Test Backend') {
             steps {
                 dir('backend') {
-                    // Jalankan unit test pada backend
+                    echo 'Running Backend Tests...'
+                    // Jalankan unit test. Jika tidak ada test, stage ini akan selesai tanpa output.
                     sh 'go test ./...'
                 }
             }
@@ -33,8 +38,9 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
-                    // Pasang dependency dan build aplikasi frontend menggunakan Vite
+                    echo 'Installing frontend dependencies...'
                     sh 'npm install'
+                    echo 'Building Frontend...'
                     sh 'npm run build'
                 }
             }
@@ -43,29 +49,31 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 // Deploy Backend:
-                // Opsi: Matikan instance backend yang lama jika diperlukan (tidak ditunjukkan di sini)
                 dir('backend') {
-                    // Menjalankan binary backend di background. Hasil output akan dialihkan ke file log.
+                    echo 'Deploying Backend...'
+                    // Jika diperlukan, tambahkan logika untuk menghentikan instance backend yang lama
+                    // Jalankan backend sebagai background process menggunakan nohup.
                     sh 'nohup ./myapp-backend > backend.log 2>&1 &'
                 }
                 // Deploy Frontend:
                 dir('frontend') {
-                    // Pastikan direktori target (/var/www/myapp/) sudah ada dan dapat diakses oleh Jenkins.
-                    // Menyalin hasil build (misalnya, folder "dist") ke direktori deploy.
-                    sh 'cp -r dist/* /var/www/myapp/'
+                    echo 'Deploying Frontend...'
+                    // Buat direktori target jika belum ada
+                    sh 'mkdir -p ${DEPLOY_DIR}'
+                    // Salin seluruh isi folder "dist" ke direktori target
+                    sh 'cp -r dist/* ${DEPLOY_DIR}/'
                 }
             }
         }
     }
-
     post {
         success {
             echo 'Pipeline executed successfully!'
-            // Anda bisa menambahkan notifikasi di sini (misalnya, email atau Slack)
+            // Di sini Anda bisa menambahkan notifikasi, misalnya mengirim email atau Slack message.
         }
         failure {
             echo 'Pipeline execution failed!'
-            // Tambahkan langkah notifikasi jika diperlukan
+            // Tambahkan langkah notifikasi error jika diperlukan.
         }
     }
 }
