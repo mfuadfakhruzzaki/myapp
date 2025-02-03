@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/mfuadfakhruzzaki/myapp-backend/middleware"
 	"github.com/mfuadfakhruzzaki/myapp-backend/models"
 	"github.com/mfuadfakhruzzaki/myapp-backend/utils"
 )
@@ -22,12 +23,31 @@ func GetItemsHandler(w http.ResponseWriter, r *http.Request) {
 
 // CreateItemHandler membuat item baru dan menyimpannya di database
 func CreateItemHandler(w http.ResponseWriter, r *http.Request) {
-	var item models.Item
-	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	// Ekstrak username dari context yang diset oleh middleware JWT.
+	username, ok := r.Context().Value(middleware.ContextUserKey).(string)
+	if !ok || username == "" {
+		http.Error(w, "User tidak terautentikasi", http.StatusUnauthorized)
 		return
 	}
 
+	// Cari user di database berdasarkan username.
+	var user models.User
+	if result := utils.DB.Where("username = ?", username).First(&user); result.Error != nil {
+		http.Error(w, "User tidak ditemukan", http.StatusUnauthorized)
+		return
+	}
+
+	// Decode data item dari request body.
+	var item models.Item
+	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+		http.Error(w, "Payload tidak valid", http.StatusBadRequest)
+		return
+	}
+
+	// Tetapkan foreign key user_id dengan ID user yang sudah ditemukan.
+	item.UserID = user.ID
+
+	// Simpan item ke database.
 	if result := utils.DB.Create(&item); result.Error != nil {
 		http.Error(w, "Error creating item: "+result.Error.Error(), http.StatusInternalServerError)
 		return

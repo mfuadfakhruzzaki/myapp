@@ -30,6 +30,7 @@ func main() {
 	protected.HandleFunc("/items/{id}", handlers.UpdateItemHandler).Methods("PUT")
 	protected.HandleFunc("/items/{id}", handlers.DeleteItemHandler).Methods("DELETE")
 
-	fmt.Println("Server berjalan di port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	fmt.Println("Backend berjalan di port 8081...")
+    log.Fatal(http.ListenAndServe(":8081", router))
+
 }
