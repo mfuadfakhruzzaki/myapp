@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Pastikan Golang ada di PATH
         PATH = "/usr/local/go/bin:${env.PATH}"
         DEPLOY_DIR = "/var/www/myapp"
     }
@@ -19,6 +18,8 @@ pipeline {
                     echo 'Building Backend...'
                     sh 'go mod tidy'
                     sh 'go build -o myapp-backend'
+                    // Debug: Tampilkan file yang dihasilkan
+                    sh 'ls -l'
                 }
             }
         }
@@ -46,12 +47,15 @@ pipeline {
                 // Deploy Backend:
                 dir('backend') {
                     echo 'Deploying Backend...'
-                    sh 'nohup ./myapp-backend > backend.log 2>&1 &'
+                    // Jalankan binary backend secara background dengan input dialihkan
+                    sh 'nohup ./myapp-backend > backend.log 2>&1 < /dev/null &'
+                    // Debug: Tampilkan proses yang berjalan
+                    sh 'ps aux | grep myapp-backend'
                 }
                 // Deploy Frontend:
                 dir('frontend') {
                     echo 'Deploying Frontend...'
-                    // Pastikan direktori target sudah ada secara manual dengan izin yang tepat
+                    sh 'mkdir -p ${DEPLOY_DIR}'
                     sh 'cp -r dist/* ${DEPLOY_DIR}/'
                 }
             }
