@@ -13,24 +13,25 @@ import (
 )
 
 func main() {
-	// Inisialisasi koneksi database dan auto migration
 	utils.InitDB()
 
 	router := mux.NewRouter()
 
-	// Endpoint untuk register dan login tidak memerlukan autentikasi
-	router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
-	router.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
+	// Tambahkan middleware CORS global
+	router.Use(middleware.CORS)
 
-	// Endpoint CRUD untuk "items", dilindungi oleh middleware JWT
+	// Endpoint publik
+	router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/login", handlers.LoginHandler).Methods("POST", "OPTIONS")
+
+	// Endpoint protected
 	protected := router.PathPrefix("/api").Subrouter()
 	protected.Use(middleware.JWTAuth)
-	protected.HandleFunc("/items", handlers.GetItemsHandler).Methods("GET")
-	protected.HandleFunc("/items", handlers.CreateItemHandler).Methods("POST")
-	protected.HandleFunc("/items/{id}", handlers.UpdateItemHandler).Methods("PUT")
-	protected.HandleFunc("/items/{id}", handlers.DeleteItemHandler).Methods("DELETE")
+	protected.HandleFunc("/items", handlers.GetItemsHandler).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/items", handlers.CreateItemHandler).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/items/{id}", handlers.UpdateItemHandler).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/items/{id}", handlers.DeleteItemHandler).Methods("DELETE", "OPTIONS")
 
-	fmt.Println("Backend berjalan di port 8081...")
-    log.Fatal(http.ListenAndServe(":8081", router))
-
+	fmt.Println("Server berjalan di port 8081...")
+	log.Fatal(http.ListenAndServe(":8081", router))
 }

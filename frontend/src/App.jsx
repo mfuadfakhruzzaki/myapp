@@ -1,35 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import LoginPage from "./LoginPage";
+import RegisterPage from "./RegisterPage";
+import Dashboard from "./Dashboard";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  // Ambil token dari localStorage jika ada
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
 
-  return (
-    <>
+  // Fungsi logout sederhana untuk menghapus token
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setToken("");
+  };
+
+  // Jika belum login, tampilkan halaman login dan register
+  if (!token) {
+    return (
       <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <h1>Welcome to MyApp</h1>
+        <LoginPage setToken={setToken} />
+        <RegisterPage />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    );
+  }
 
-export default App
+  // Jika sudah login, tampilkan dashboard
+  return (
+    <div>
+      <button onClick={handleLogout}>Logout</button>
+      <Dashboard token={token} />
+    </div>
+  );
+}
