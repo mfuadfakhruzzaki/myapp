@@ -10,29 +10,17 @@ import (
 	"github.com/mfuadfakhruzzaki/myapp-backend/utils"
 )
 
-// GetItemsHandler mengambil semua items dari database.
+// GetItemsHandler mengambil semua items dari database
 func GetItemsHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := utils.DB.Query("SELECT id, name, description FROM items")
-	if err != nil {
-		http.Error(w, "Error fetching items", http.StatusInternalServerError)
+	var items []models.Item
+	if result := utils.DB.Find(&items); result.Error != nil {
+		http.Error(w, "Error fetching items: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-
-	var items []models.Item
-	for rows.Next() {
-		var item models.Item
-		if err := rows.Scan(&item.ID, &item.Name, &item.Description); err != nil {
-			http.Error(w, "Error scanning item", http.StatusInternalServerError)
-			return
-		}
-		items = append(items, item)
-	}
-
 	json.NewEncoder(w).Encode(items)
 }
 
-// CreateItemHandler menambahkan item baru ke database.
+// CreateItemHandler membuat item baru dan menyimpannya di database
 func CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	var item models.Item
 	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
@@ -40,10 +28,8 @@ func CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "INSERT INTO items (name, description) VALUES ($1, $2) RETURNING id"
-	err := utils.DB.QueryRow(query, item.Name, item.Description).Scan(&item.ID)
-	if err != nil {
-		http.Error(w, "Error creating item", http.StatusInternalServerError)
+	if result := utils.DB.Create(&item); result.Error != nil {
+		http.Error(w, "Error creating item: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -51,47 +37,53 @@ func CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
-// UpdateItemHandler mengubah data item yang sudah ada.
+// UpdateItemHandler memperbarui data item yang sudah ada berdasarkan ID
 func UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
 	if err != nil {
 		http.Error(w, "Invalid item ID", http.StatusBadRequest)
 		return
 	}
 
 	var item models.Item
-	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+	// Cari item berdasarkan ID
+	if result := utils.DB.First(&item, id); result.Error != nil {
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+
+	// Decode data baru dari request body
+	var updatedData models.Item
+	if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	query := "UPDATE items SET name = $1, description = $2 WHERE id = $3"
-	_, err = utils.DB.Exec(query, item.Name, item.Description, id)
-	if err != nil {
-		http.Error(w, "Error updating item", http.StatusInternalServerError)
+	// Perbarui field yang diizinkan
+	item.Name = updatedData.Name
+	item.Description = updatedData.Description
+
+	// Simpan perubahan
+	if result := utils.DB.Save(&item); result.Error != nil {
+		http.Error(w, "Error updating item: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(item)
 }
 
-// DeleteItemHandler menghapus item dari database.
+// DeleteItemHandler menghapus item berdasarkan ID
 func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
 	if err != nil {
 		http.Error(w, "Invalid item ID", http.StatusBadRequest)
 		return
 	}
 
-	query := "DELETE FROM items WHERE id = $1"
-	_, err = utils.DB.Exec(query, id)
-	if err != nil {
-		http.Error(w, "Error deleting item", http.StatusInternalServerError)
+	if result := utils.DB.Delete(&models.Item{}, id); result.Error != nil {
+		http.Error(w, "Error deleting item: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 

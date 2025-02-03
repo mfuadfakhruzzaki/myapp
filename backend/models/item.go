@@ -1,7 +1,10 @@
 package models
 
+import "gorm.io/gorm"
+
 type Item struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+    gorm.Model
+    UserID      uint   // Foreign key ke tabel users
+    Name        string `gorm:"not null"`
+    Description string
 }

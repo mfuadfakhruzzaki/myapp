@@ -13,31 +13,30 @@ import (
 )
 
 // jwtKey adalah kunci rahasia untuk menandatangani token JWT.
-// Pastikan untuk menggunakan kunci yang aman di lingkungan produksi.
-var jwtKey = []byte("secret_key") 
+// Disarankan untuk mengambil nilainya dari environment variable untuk keamanan.
+var jwtKey = []byte("secret_key")
 
 // RegisterHandler menangani pendaftaran user baru.
+// Endpoint: POST /register
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var user models.User
-	// Decode JSON request body ke struct User.
+	// Decode request body ke struct User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Input tidak valid", http.StatusBadRequest)
 		return
 	}
 
-	// Hash password sebelum disimpan.
+	// Hash password sebelum menyimpan (pastikan password tidak disimpan dalam bentuk plaintext)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		http.Error(w, "Error pada proses hashing password", http.StatusInternalServerError)
 		return
 	}
 	user.Password = string(hashedPassword)
 
-	// Simpan user ke database.
-	query := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
-	err = utils.DB.QueryRow(query, user.Username, user.Password).Scan(&user.ID)
-	if err != nil {
-		http.Error(w, "Error saving user", http.StatusInternalServerError)
+	// Simpan user menggunakan GORM
+	if result := utils.DB.Create(&user); result.Error != nil {
+		http.Error(w, "Error menyimpan user: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -45,43 +44,42 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// LoginHandler menangani autentikasi user dan menghasilkan token JWT.
+// LoginHandler menangani proses autentikasi user.
+// Endpoint: POST /login
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var creds models.User
-	// Decode kredensial login dari request.
-	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	var credentials models.User
+	// Decode JSON request body ke struct User (hanya memerlukan username dan password)
+	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		http.Error(w, "Input tidak valid", http.StatusBadRequest)
 		return
 	}
 
-	var storedUser models.User
-	// Ambil data user dari database berdasarkan username.
-	query := "SELECT id, username, password FROM users WHERE username=$1"
-	err := utils.DB.QueryRow(query, creds.Username).Scan(&storedUser.ID, &storedUser.Username, &storedUser.Password)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+	var user models.User
+	// Cari user berdasarkan username menggunakan GORM
+	if result := utils.DB.Where("username = ?", credentials.Username).First(&user); result.Error != nil {
+		http.Error(w, "User tidak ditemukan", http.StatusUnauthorized)
 		return
 	}
 
-	// Bandingkan password yang diberikan dengan hash yang tersimpan.
-	if err = bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(creds.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	// Bandingkan password yang diinput dengan password yang disimpan (yang sudah di-hash)
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(credentials.Password)); err != nil {
+		http.Error(w, "Password salah", http.StatusUnauthorized)
 		return
 	}
 
-	// Buat token JWT yang berlaku selama 24 jam.
+	// Buat token JWT dengan masa berlaku 24 jam
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &jwt.StandardClaims{
-		Subject:   storedUser.Username,
+		Subject:   user.Username,
 		ExpiresAt: expirationTime.Unix(),
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		http.Error(w, "Error membuat token", http.StatusInternalServerError)
 		return
 	}
 
+	// Kirim token sebagai response dalam format JSON
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
